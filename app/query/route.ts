@@ -1,26 +1,45 @@
-// import postgres from 'postgres';
+import client from '../lib/mongodb';
 
-// const sql = postgres(process.env.POSTGRES_URL!, { ssl: 'require' });
+const mongodb = client.db('dashboard');
 
-// async function listInvoices() {
-// 	const data = await sql`
-//     SELECT invoices.amount, customers.name
-//     FROM invoices
-//     JOIN customers ON invoices.customer_id = customers.id
-//     WHERE invoices.amount = 666;
-//   `;
+async function listInvoices() {
+  const invoices = mongodb.collection('Invoice'); // Prisma uses model name
 
-// 	return data;
-// }
+  const data = await invoices
+    .aggregate([
+      {
+        $match: { amount: 666 },
+      },
+      {
+        $lookup: {
+          from: 'Customer',           // collection name
+          localField: 'customerId',   // field in invoices
+          foreignField: '_id',         // field in customers
+          as: 'customer',
+        },
+      },
+      {
+        $unwind: '$customer',
+      },
+      {
+        $project: {
+          _id: 0,
+          amount: 1,
+          name: '$customer.name',
+        },
+      },
+    ])
+    .toArray();
+
+  return data;
+}
 
 export async function GET() {
-  return Response.json({
-    message:
-      'Uncomment this file and remove this line. You can delete this file when you are finished.',
-  });
-  // try {
-  // 	return Response.json(await listInvoices());
-  // } catch (error) {
-  // 	return Response.json({ error }, { status: 500 });
-  // }
+  try {
+    return Response.json(await listInvoices());
+  } catch (error) {
+    console.error(error);
+    return Response.json({ error }, { status: 500 });
+  }
 }
+
