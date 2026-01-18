@@ -1,7 +1,7 @@
 import bcrypt from 'bcrypt'
-import client from '../lib/mongodb'
+import client from '@/app/lib/mongodb'
 import { invoices, customers, revenue, users } from '../lib/placeholder-data'
-import prisma from '../lib/prisma';
+import prisma from '@/app/lib/prisma';
 
 const mongodb = client.db('dashboard');
 async function seedUsers() {
