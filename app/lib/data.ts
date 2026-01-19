@@ -12,6 +12,8 @@ import {
   Revenue,
 } from './definitions';
 import { formatCurrency } from './utils';
+import { InvoiceStatus, Prisma } from '@/generated/prisma/client';
+import type { Invoice } from '@/generated/prisma/client';
 
 export async function fetchRevenue() {
   try {
@@ -23,34 +25,38 @@ export async function fetchRevenue() {
   }
 }
 
+function isInvoiceStatus(value: string): value is InvoiceStatus {
+  return Object.values(InvoiceStatus).includes(value as InvoiceStatus);
+}
+
 export async function fetchLatestInvoices() {
   try {
-    const data = await prisma.invoice.findMany({
-      orderBy: {
-        date: 'desc',
-      },
-      take: 5,
-      include: {
-        customer: {
-          select: {
-            name: true,
-            email: true,
-            image_url: true,
-          },
+	  const data = await prisma.invoice.findMany({
+    orderBy: {
+      date: 'desc',
+    },
+    take: 5,
+    include: {
+      customer: {
+        select: {
+          name: true,
+          email: true,
+          image_url: true,
         },
       },
-    });
+    },
+  });
 
-    const latestInvoices = data.map((invoice) => ({
-      id: invoice.id,
-      amount: formatCurrency(invoice.amount),
-      name: invoice.customer.name,
-      email: invoice.customer.email,
-      image_url: invoice.customer.image_url,
-    }));
+  const latestInvoices = data.map((invoice) => ({
+    id: invoice.id,
+    amount: formatCurrency(invoice.amount),
+    name: invoice.customer.name,
+    email: invoice.customer.email,
+    image_url: invoice.customer.image_url,
+  }));
 
-    return latestInvoices;
-  } catch (error) {
+  return latestInvoices;
+      } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch the latest invoices.');
   }
@@ -104,45 +110,10 @@ export async function fetchFilteredInvoices(
 ) {
   const offset = (currentPage - 1) * ITEMS_PER_PAGE;
 
-  try {
-
-    const invoices = await prisma.invoice.findMany({
-      where: {
-        OR: [
-          {
-            status: {
-              contains: query,
-              mode: 'insensitive',
-            },
-          },
-          {
-            amount: isNaN(Number(query))
-              ? undefined
-              : Number(query),
-          },
-          {
-            customer: {
-              OR: [
-                {
-                  name: {
-                    contains: query,
-                    mode: 'insensitive',
-                  },
-                },
-                {
-                  email: {
-                    contains: query,
-                    mode: 'insensitive',
-                  },
-                },
-              ],
-            },
-          },
-        ],
-      },
-      orderBy: {
-        date: 'desc',
-      },
+  // ✅ DEFAULT: no search → return all invoices
+  if (query.trim() === '') {
+    return prisma.invoice.findMany({
+      orderBy: { date: 'desc' },
       take: ITEMS_PER_PAGE,
       skip: offset,
       include: {
@@ -155,75 +126,160 @@ export async function fetchFilteredInvoices(
         },
       },
     });
+  }
 
-    return invoices;
+  try {
+    const OR: any[] = [];
+
+    if (Object.values(InvoiceStatus).includes(query as InvoiceStatus)) {
+      OR.push({ status: query as InvoiceStatus });
+    }
+
+    if (!Number.isNaN(Number(query))) {
+      OR.push({ amount: Number(query) });
+    }
+
+    OR.push({
+      customer: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+    });
+
+    return prisma.invoice.findMany({
+      where: { OR },
+      orderBy: { date: 'desc' },
+      take: ITEMS_PER_PAGE,
+      skip: offset,
+      include: {
+        customer: {
+          select: {
+            name: true,
+            email: true,
+            image_url: true,
+          },
+        },
+      },
+    });
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch invoices.');
   }
 }
 
-export async function fetchInvoicesPages(query: string) {
-  try {
-    const where = {
-      OR: [
-        {
-          customer: {
-            name: {
-              contains: query,
-              mode: 'insensitive',
-            },
-          },
-        },
-        {
-          customer: {
-            email: {
-              contains: query,
-              mode: 'insensitive',
-            },
-          },
-        },
-        {
-          status: {
-            contains: query,
-            mode: 'insensitive',
-          },
-        },
-        // numeric search
-        ...(Number.isNaN(Number(query))
-          ? []
-          : [
-              {
-                amount: {
-                  equals: Number(query),
-                },
-              },
-            ]),
-        // date search
-        ...(isNaN(Date.parse(query))
-          ? []
-          : [
-              {
-                date: {
-                  equals: new Date(query),
-                },
-              },
-            ]),
-      ],
-    };
 
-    const count = await prisma.invoice.count({
-      where,
+
+
+
+
+
+export async function fetchInvoicesPages(query: string) {
+  // ✅ NO SEARCH → count all invoices
+  if (query.trim() === '') {
+    const count = await prisma.invoice.count();
+    return Math.ceil(count / ITEMS_PER_PAGE);
+  }
+
+  try {
+    const OR: any[] = [];
+
+    if (Object.values(InvoiceStatus).includes(query as InvoiceStatus)) {
+      OR.push({ status: query as InvoiceStatus });
+    }
+
+    if (!Number.isNaN(Number(query))) {
+      OR.push({ amount: Number(query) });
+    }
+
+    OR.push({
+      customer: {
+        OR: [
+          { name: { contains: query, mode: 'insensitive' } },
+          { email: { contains: query, mode: 'insensitive' } },
+        ],
+      },
     });
 
-    const totalPages = Math.ceil(count / ITEMS_PER_PAGE);
-    return totalPages;
+    const count = await prisma.invoice.count({
+      where: { OR },
+    });
+
+    return Math.ceil(count / ITEMS_PER_PAGE);
   } catch (error) {
     console.error('Database Error:', error);
     throw new Error('Failed to fetch total number of invoices.');
   }
 }
 
+
+
+
+
+
+
+//export async function fetchInvoicesPages(query: string) {
+//  try {
+//    const where = {
+//      OR: [
+//        {
+//          customer: {
+//            name: {
+//              contains: query,
+//              mode: 'insensitive',
+//            },
+//          },
+//        },
+//        {
+//          customer: {
+//            email: {
+//              contains: query,
+//              mode: 'insensitive',
+//            },
+//          },
+//        },
+//        {
+//          status: {
+//            contains: query,
+//            mode: 'insensitive',
+//          },
+//        },
+//        // numeric search
+//        ...(Number.isNaN(Number(query))
+//          ? []
+//          : [
+//              {
+//                amount: {
+//                  equals: Number(query),
+//                },
+//              },
+//            ]),
+//        // date search
+//        ...(isNaN(Date.parse(query))
+//          ? []
+//          : [
+//              {
+//                date: {
+//                  equals: new Date(query),
+//                },
+//              },
+//            ]),
+//      ],
+//    };
+//
+//    const count = await prisma.invoice.count({
+//      where,
+//    });
+//
+//    const totalPages = Math.ceil(count / ITEMS_PER_PAGE);
+//    return totalPages;
+//  } catch (error) {
+//    console.error('Database Error:', error);
+//    throw new Error('Failed to fetch total number of invoices.');
+//  }
+//}
+//
 
 export async function fetchInvoiceById(id: string) {
   //try {

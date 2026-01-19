@@ -31,11 +31,11 @@ export default async function InvoicesTable({
                         className="mr-2 rounded-full"
                         width={28}
                         height={28}
-                        alt={`${invoice.name}'s profile picture`}
+                        alt={`${invoice.customer.name}'s profile picture`}
                       />
-                      <p>{invoice.name}</p>
+                      <p>{invoice.customer.name}</p>
                     </div>
-                    <p className="text-sm text-gray-500">{invoice.email}</p>
+                    <p className="text-sm text-gray-500">{invoice.customer.email}</p>
                   </div>
                   <InvoiceStatus status={invoice.status} />
                 </div>
@@ -44,7 +44,7 @@ export default async function InvoicesTable({
                     <p className="text-xl font-medium">
                       {formatCurrency(invoice.amount)}
                     </p>
-                    <p>{formatDateToLocal(invoice.date)}</p>
+                    <p>{formatDateToLocal(invoice.date.toISOString())}</p>
                   </div>
                   <div className="flex justify-end gap-2">
                     <UpdateInvoice id={invoice.id} />
@@ -90,9 +90,9 @@ export default async function InvoicesTable({
                         className="rounded-full"
                         width={28}
                         height={28}
-                        alt={`${invoice.name}'s profile picture`}
+                        alt={`${invoice.customer.name}'s profile picture`}
                       />
-                      <p>{invoice.name}</p>
+                      <p>{invoice.customer.name}</p>
                     </div>
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
@@ -102,7 +102,7 @@ export default async function InvoicesTable({
                     {formatCurrency(invoice.amount)}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
-                    {formatDateToLocal(invoice.date)}
+                    {formatDateToLocal(invoice.date.toISOString())}
                   </td>
                   <td className="whitespace-nowrap px-3 py-3">
                     <InvoiceStatus status={invoice.status} />

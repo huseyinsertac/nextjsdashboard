@@ -1,7 +1,10 @@
+export const dynamic = 'force-dynamic'
 import bcrypt from 'bcrypt'
 import client from '@/app/lib/mongodb'
-import { invoices, customers, revenue, users } from '../lib/placeholder-data'
+import { invoices, customers, revenue, users } from '@/app/lib/placeholder-data'
 import prisma from '@/app/lib/prisma';
+import type {InvoiceStatus} from '@/generated/prisma/client'
+import { NextResponse } from 'next/server'
 
 const mongodb = client.db('dashboard');
 async function seedUsers() {
@@ -46,7 +49,7 @@ async function seedInvoices() {
       return {
         customerId,
         amount: invoice.amount,
-        status: invoice.status,
+        status: invoice.status as InvoiceStatus,
         date: new Date(invoice.date),
       };
     }),
@@ -71,16 +74,25 @@ async function seedRevenue() {
 
 
 export async function GET() {
-  try {
-    await seedUsers();
-   // await seedCustomers();
-    console.log(invoices);
-    await seedInvoices();
-    await seedRevenue();
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json(
+      { message: 'Seeding disabled in production' },
+      { status: 403 }
+    )
+  }
 
-    return Response.json({ message: 'MongoDB + Prisma seeded successfully' });
+  try {
+    await seedUsers()
+    await seedInvoices()
+    await seedRevenue()
+
+    return NextResponse.json({ message: 'Seed completed' })
   } catch (error) {
-    console.error(error);
-    return Response.json({ error: 'Seeding failed' }, { status: 500 });
+    console.error(error)
+    return NextResponse.json(
+      { error: 'Seeding failed' },
+      { status: 500 }
+    )
   }
 }
+
