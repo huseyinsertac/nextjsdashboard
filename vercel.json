@@ -1,6 +1,0 @@
-{
-  "build": {
-    "env": {
-      MONGODB_URI="mongodb+srv://Vercel-Admin-atlas-emerald-kite:2sJkiWnC5kV4E6aH@atlas-emerald-kite.9e1uuxs.mongodb.net/dashboard?retryWrites=true&w=majority"
-    }
-  }
