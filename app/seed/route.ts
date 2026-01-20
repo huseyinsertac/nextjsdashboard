@@ -1,3 +1,4 @@
+//"use server"
 export const dynamic = 'force-dynamic'
 import bcrypt from 'bcrypt'
 import client from '@/app/lib/mongodb'
