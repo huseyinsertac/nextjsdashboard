@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { cache } from 'react';
 import { notFound } from 'next/navigation';
 import prisma from '@/app/lib/prisma';

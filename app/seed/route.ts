@@ -82,9 +82,10 @@ export async function GET() {
   }
 
   try {
+    //await seedCustomers();	  
     await seedUsers()
-    await seedInvoices()
-    await seedRevenue()
+    //await seedInvoices()
+    //await seedRevenue()
 
     return NextResponse.json({ message: 'Seed completed' })
   } catch (error) {
